@@ -1,6 +1,45 @@
-import { maxWorkers, workerBody } from "config";
+import { maxWorkers } from "config";
+
 import { harvest, store, repair, build, upgrade, pickupDroppedEnergy } from "behaviors/common";
 
+/**
+ * 根据能量上限自动生成最优 worker 身体部件
+ * 设计原则：
+ * 1. 以 [WORK, CARRY, MOVE] 为一组，单组消耗 200 能量，保证采集、搬运、移动能力均衡
+ * 2. 尽可能多组，最大不超过 50 个部件（Screeps 单个 creep 身体上限）
+ * 3. 剩余能量优先补充 CARRY 和 MOVE，提升搬运和机动性
+ * 4. 充分利用能量上限，避免浪费
+ * @param energyCapacity 房间最大可用能量（room.energyCapacityAvailable）
+ * @returns 最优 worker 身体部件数组
+ */
+export function generateOptimalWorkerBody(energyCapacity: number): BodyPartConstant[] {
+  const body: BodyPartConstant[] = [];
+  const unitCost = 200; // 一组 [WORK, CARRY, MOVE] 的能量消耗
+  const unitParts: BodyPartConstant[] = [WORK, CARRY, MOVE];
+  // 计算最多能生成多少组
+  const maxUnits = Math.floor(energyCapacity / unitCost);
+  const maxBodyParts = 50;
+  // 受身体上限约束，最多能有多少组
+  const units = Math.min(maxUnits, Math.floor(maxBodyParts / 3));
+  // 堆叠完整组
+  for (let i = 0; i < units; i++) {
+    body.push(...unitParts);
+  }
+  // 计算剩余能量
+  let remaining = energyCapacity - units * unitCost;
+  // 用剩余能量补充 CARRY 和 MOVE，优先保证搬运和移动能力
+  while (body.length < maxBodyParts && remaining >= 50) {
+    if (remaining >= 50) {
+      body.push(CARRY);
+      remaining -= 50;
+    }
+    if (body.length < maxBodyParts && remaining >= 50) {
+      body.push(MOVE);
+      remaining -= 50;
+    }
+  }
+  return body;
+}
 
 /**
  * 工人创建逻辑
@@ -25,9 +64,10 @@ export function spawnWorkers(spawn: StructureSpawn) {
   const sites = spawn.room.find(FIND_CONSTRUCTION_SITES);
   if (energyTargets.length === 0 && sites.length === 0) return;
 
-  // 创建工人，补全 CreepMemory 字段
+  // 动态生成最优 worker 身体部件
+  const body = generateOptimalWorkerBody(spawn.room.energyCapacityAvailable);
   const name = `Worker${Game.time}`;
-  spawn.spawnCreep(workerBody, name, {
+  spawn.spawnCreep(body, name, {
     memory: {
       role: "worker",
       room: spawn.room.name,
