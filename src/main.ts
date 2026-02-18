@@ -1,5 +1,6 @@
 import { ErrorMapper } from "utils/ErrorMapper";
 import { spawnWorkers, runWorkers } from "./worker";
+import { spawnUpgraders, runUpgraders } from "./upgrader";
 
 declare global {
   /*
@@ -22,8 +23,9 @@ declare global {
     working: boolean;
     /**
      * 工人状态机：'harvest' | 'build' | 'store'，可选
+     * 升级者状态机：'withdraw' | 'upgrade'，可选
      */
-    state?: "harvest" | "build" | "store";
+    state?: "harvest" | "build" | "store" | "withdraw" | "upgrade";
   }
 
 }
@@ -43,6 +45,10 @@ export const loop = ErrorMapper.wrapLoop(() => {
     spawnWorkers(spawn);
     // 工人工作逻辑
     runWorkers(spawn);
+    // 升级者创建逻辑
+    spawnUpgraders(spawn);
+    // 升级者工作逻辑
+    runUpgraders(spawn);
   }
 
   // 自动清理已经死亡的 creep 的内存，防止内存泄漏

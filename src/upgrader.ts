@@ -1,4 +1,4 @@
-import { maxUpgraders } from "../config";
+import { maxUpgraders, upgraderBody } from "config";
 
 /**
  * 控制器升级者（upgrader）创建逻辑
@@ -9,14 +9,13 @@ export function spawnUpgraders(spawn: StructureSpawn) {
   const upgraders = Object.values(Game.creeps).filter(c => c.memory.role === "upgrader");
   if (upgraders.length >= maxUpgraders) return;
 
-  // 动态生成身体部件，和 worker 类似
-  const body: BodyPartConstant[] = [WORK, CARRY, MOVE];
+  // 使用配置中的身体部件
   const name = `Upgrader${Game.time}`;
-  spawn.spawnCreep(body, name, {
+  spawn.spawnCreep(upgraderBody, name, {
     memory: {
       role: "upgrader",
       room: spawn.room.name,
-      upgrading: false
+      working: false
     }
   });
 }

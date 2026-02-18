@@ -8,3 +8,9 @@ export const enableUpgradeController: boolean = true;
 export const maxWorkers: number = 10;
 
 
+// 最大控制器升级者数量（0 表示不开启升级者）
+export const maxUpgraders: number = 1;
+// 升级者身体部件配置
+export const upgraderBody: BodyPartConstant[] = [WORK, WORK, WORK, WORK, CARRY, MOVE];
+
+
