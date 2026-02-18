@@ -1,4 +1,5 @@
 import { ErrorMapper } from "utils/ErrorMapper";
+import { spawnWorkers, runWorkers } from "./worker";
 
 declare global {
   /*
@@ -19,6 +20,10 @@ declare global {
     role: string;
     room: string;
     working: boolean;
+    /**
+     * 工人状态机：'harvest' | 'build' | 'store'，可选
+     */
+    state?: "harvest" | "build" | "store";
   }
 
 }
@@ -30,9 +35,17 @@ declare const global: {
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
 // This utility uses source maps to get the line numbers and file names of the original, TS source code
 export const loop = ErrorMapper.wrapLoop(() => {
-  console.log(`Current game tick is ${Game.time}`);
 
-  // Automatically delete memory of missing creeps
+  // 获取名为 "Spawn1" 的孵化器对象
+  const spawn = Game.spawns["Spawn1"];
+  if (spawn) {
+    // 工人创建逻辑
+    spawnWorkers(spawn);
+    // 工人工作逻辑
+    runWorkers(spawn);
+  }
+
+  // 自动清理已经死亡的 creep 的内存，防止内存泄漏
   for (const name in Memory.creeps) {
     if (!(name in Game.creeps)) {
       delete Memory.creeps[name];
