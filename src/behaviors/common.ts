@@ -14,7 +14,7 @@ export function pickupDroppedEnergy(creep: Creep) {
   }
   return false;
 }
-import { enableBuild, enableRepair, enableUpgradeController } from "../config";
+
 
 /**
  * 采集能量
@@ -52,11 +52,13 @@ export function store(creep: Creep) {
   return false;
 }
 
+
+
 /**
  * 修理建筑
+ * 只负责执行修理目标，不负责分配数量
  */
 export function repair(creep: Creep) {
-  if (!enableRepair) return false;
   const repairTargets = creep.room.find(FIND_STRUCTURES, {
     filter: s => s.hits < s.hitsMax
   }).sort((a, b) => (b.hitsMax - b.hits) - (a.hitsMax - a.hits));
@@ -75,9 +77,9 @@ export function repair(creep: Creep) {
 
 /**
  * 建造工地
+ * 只负责执行建造目标，不负责分配数量
  */
 export function build(creep: Creep) {
-  if (!enableBuild) return false;
   const site = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
   if (site) {
     creep.say("建造");
@@ -91,9 +93,10 @@ export function build(creep: Creep) {
 
 /**
  * 升级控制器
+ * 只负责执行升级目标，不负责分配数量
  */
 export function upgrade(creep: Creep) {
-  if (!enableUpgradeController || !creep.room.controller) return false;
+  if (!creep.room.controller) return false;
   creep.say("升级");
   if (creep.upgradeController(creep.room.controller) === ERR_NOT_IN_RANGE) {
     creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: "#00ffff" } });

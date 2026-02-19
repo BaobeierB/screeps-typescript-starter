@@ -25,7 +25,7 @@ declare global {
      * 工人状态机：'harvest' | 'build' | 'store'，可选
      * 升级者状态机：'withdraw' | 'upgrade'，可选
      */
-    state?: "harvest" | "build" | "store" | "withdraw" | "upgrade";
+  state?: "harvest" | "build" | "store" | "withdraw" | "upgrade" | "repair";
   }
 
 }

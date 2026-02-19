@@ -1,4 +1,4 @@
-import { maxWorkers } from "config";
+import { maxWorkers, maxRepairers, maxBuilders, maxWorkerUpgraders, maxStorers } from "config";
 
 import { harvest, store, repair, build, upgrade, pickupDroppedEnergy } from "behaviors/common";
 
@@ -86,44 +86,112 @@ export function runWorkers(spawn: StructureSpawn) {
   const workers = Object.values(Game.creeps).filter(c => c.memory.role === "worker");
   if (workers.length === 0) return;
 
+  // 统计当前各任务分配数量
+  let repairing = 0, building = 0, upgrading = 0, storing = 0;
+  for (const creep of workers) {
+  if (creep.memory.state === "repair") repairing++;
+  else if (creep.memory.state === "build") building++;
+  else if (creep.memory.state === "upgrade") upgrading++;
+  else if (creep.memory.state === "store") storing++;
+  }
 
-
-  workers.forEach((creep, i) => {
-    // 初始化状态
-    if (!creep.memory.state) {
+  // 先分配状态
+  for (const creep of workers) {
+    // 没能量就采集
+    if (creep.store[RESOURCE_ENERGY] === 0) {
       creep.memory.state = "harvest";
+      continue;
     }
+    // 采集满了才分配任务
+    if (creep.memory.state === "harvest" && creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+      // 优先分配存储
+      if (maxStorers > 0 && storing < maxStorers && storeTaskAvailable(creep)) {
+        creep.memory.state = "store";
+        storing++;
+        continue;
+      }
+      // 修理
+      if (maxRepairers > 0 && repairing < maxRepairers) {
+        creep.memory.state = "repair";
+        repairing++;
+        continue;
+      }
+      // 建造
+      if (maxBuilders > 0 && building < maxBuilders) {
+        creep.memory.state = "build";
+        building++;
+        continue;
+      }
+      // 升级
+      if (maxWorkerUpgraders > 0 && upgrading < maxWorkerUpgraders) {
+        creep.memory.state = "upgrade";
+        upgrading++;
+        continue;
+      }
+      // 默认存储
+      creep.memory.state = "store";
+      storing++;
+    }
+  }
 
-    // 状态机逻辑
+  // 再根据状态执行行为
+  for (const creep of workers) {
     switch (creep.memory.state) {
-      case "harvest": {
-        // 采集直到能量满
+      case "harvest":
         if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
           harvest(creep);
-        } else {
-          // 采满后优先存储，若无可存储目标则修理、建造、升级
-          creep.memory.state = "store";
         }
         break;
-      }
-      case "store": {
-        // 有能量优先存储，若无目标则修理、建造、升级，直到能量用完
+      case "store":
         if (creep.store[RESOURCE_ENERGY] > 0) {
-          if (store(creep)) return;
-          if (repair(creep)) return;
-          if (build(creep)) return;
-          if (upgrade(creep)) return;
-          // 没有任何目标，直接切回采集
-          creep.say("采集");
-          creep.memory.state = "harvest";
-        } else {
-          // 优先拾取掉落能量
-          if (pickupDroppedEnergy(creep)) return;
-          // 能量用完切回采集
+          if (store(creep)) break;
+          // 没有存储目标，切回采集
           creep.memory.state = "harvest";
         }
         break;
-      }
+      case "repair":
+        if (creep.store[RESOURCE_ENERGY] > 0) {
+          if (repair(creep)) break;
+          // 没有修理目标，切回采集
+          creep.memory.state = "harvest";
+        }
+        break;
+      case "build":
+        if (creep.store[RESOURCE_ENERGY] > 0) {
+          if (build(creep)) break;
+          // 没有建造目标，切回采集
+          creep.memory.state = "harvest";
+        }
+        break;
+      case "upgrade":
+        if (creep.store[RESOURCE_ENERGY] > 0) {
+          if (upgrade(creep)) break;
+          // 没有升级目标，切回采集
+          creep.memory.state = "harvest";
+        }
+        break;
+      default:
+        // 兜底采集
+        creep.memory.state = "harvest";
+        break;
     }
-  });
+    // 能量用完自动切回采集
+    if (creep.store[RESOURCE_ENERGY] === 0) {
+      creep.memory.state = "harvest";
+    }
+  }
 }
+
+// 判断是否有存储任务目标
+function storeTaskAvailable(creep: Creep): boolean {
+  const targets = creep.room.find(FIND_STRUCTURES, {
+    filter: s =>
+      (s.structureType === STRUCTURE_SPAWN ||
+        s.structureType === STRUCTURE_EXTENSION ||
+        s.structureType === STRUCTURE_STORAGE ||
+        s.structureType === STRUCTURE_CONTAINER) &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  });
+  return targets.length > 0;
+}
+
