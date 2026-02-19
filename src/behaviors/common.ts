@@ -56,21 +56,35 @@ export function store(creep: Creep) {
 
 /**
  * 修理建筑
- * 只负责执行修理目标，不负责分配数量
+ * 持续修理同一目标直到能量耗尽或目标修满
  */
 export function repair(creep: Creep) {
-  const repairTargets = creep.room.find(FIND_STRUCTURES, {
-    filter: s => s.hits < s.hitsMax
-  }).sort((a, b) => (b.hitsMax - b.hits) - (a.hitsMax - a.hits));
-  for (const target of repairTargets) {
-    const repairAmount = Math.min(target.hitsMax - target.hits, creep.store[RESOURCE_ENERGY] * 100);
-    if (repairAmount >= creep.store[RESOURCE_ENERGY] * 100) {
-      creep.say("修理");
-      if (creep.repair(target) === ERR_NOT_IN_RANGE) {
-        creep.moveTo(target, { visualizePathStyle: { stroke: "#00aaff" } });
-      }
-      return true;
+  // 优先修理记忆中的目标
+  let target: Structure | null = null;
+  if (creep.memory.repairTargetId) {
+    target = Game.getObjectById<Structure>(creep.memory.repairTargetId);
+    // 如果目标不存在或已修满，清除记忆
+    if (!target || target.hits >= target.hitsMax) {
+      creep.memory.repairTargetId = undefined;
+      target = null;
     }
+  }
+  // 没有目标则重新查找
+  if (!target) {
+    const repairTargets = creep.room.find(FIND_STRUCTURES, {
+      filter: s => s.hits < s.hitsMax
+    }).sort((a, b) => (b.hitsMax - b.hits) - (a.hitsMax - a.hits));
+    if (repairTargets.length > 0) {
+      target = repairTargets[0];
+      creep.memory.repairTargetId = target.id;
+    }
+  }
+  if (target) {
+    creep.say("修理");
+    if (creep.repair(target) === ERR_NOT_IN_RANGE) {
+      creep.moveTo(target, { visualizePathStyle: { stroke: "#00aaff" } });
+    }
+    return true;
   }
   return false;
 }

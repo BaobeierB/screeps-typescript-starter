@@ -8,7 +8,7 @@ export const maxWorkerUpgraders: number = 2;
 // 最大存储工人数（0 表示不存储）
 export const maxStorers: number = 3;
 // 最大工人数
-export const maxWorkers: number = 8;
+export const maxWorkers: number = 10;
 
 // 最大upgrader数量（0 表示不开启升级者creep）
 export const maxUpgraders: number = 2;

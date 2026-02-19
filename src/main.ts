@@ -26,6 +26,10 @@ declare global {
      * 升级者状态机：'withdraw' | 'upgrade'，可选
      */
   state?: "harvest" | "build" | "store" | "withdraw" | "upgrade" | "repair";
+  /**
+   * 当前修理目标id（仅repair状态时使用）
+   */
+  repairTargetId?: Id<Structure>;
   }
 
 }
